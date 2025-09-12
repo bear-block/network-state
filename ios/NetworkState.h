@@ -1,5 +1,7 @@
 #import <NetworkStateSpec/NetworkStateSpec.h>
+#import <Foundation/Foundation.h>
+#import <React/RCTEventEmitter.h>
 
-@interface NetworkState : NSObject <NativeNetworkStateSpec>
+@interface NetworkState : RCTEventEmitter <NativeNetworkStateSpec>
 
 @end

@@ -1,7 +1,7 @@
 {
   "name": "@bear-block/network-state",
-  "version": "0.1.0",
-  "description": "later",
+  "version": "1.0.0",
+  "description": "Modern React Native network state tracking library using Android 10+ Network Capabilities API and iOS NWPathMonitor",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
   "exports": {
@@ -43,18 +43,25 @@
   "keywords": [
     "react-native",
     "ios",
-    "android"
+    "android",
+    "network",
+    "network-state",
+    "network-monitoring",
+    "wifi",
+    "cellular",
+    "ethernet",
+    "network-capabilities"
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bear-block/bear-block-network-state.git"
+    "url": "git+https://github.com/bear-block/network-state.git"
   },
   "author": "hao.dev7 <hao.dev7@gmail.com> (https://github.com/bear-block)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/bear-block/bear-block-network-state/issues"
+    "url": "https://github.com/bear-block/network-state/issues"
   },
-  "homepage": "https://github.com/bear-block/bear-block-network-state#readme",
+  "homepage": "https://github.com/bear-block/network-state#readme",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
