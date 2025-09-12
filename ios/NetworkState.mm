@@ -1,6 +1,7 @@
 #import "NetworkState.h"
 #import "NetworkStateManager.h"
 #import <Network/Network.h>
+#import <React/RCTBridge.h>
 
 @interface NetworkState ()
 @property (nonatomic, strong) NetworkStateManager *networkStateManager;
@@ -9,7 +10,11 @@
 
 @implementation NetworkState
 
+#if RCT_NEW_ARCH_ENABLED
 RCT_EXPORT_MODULE()
+#else
+RCT_EXPORT_MODULE(NetworkState)
+#endif
 
 - (instancetype)init {
     self = [super init];
@@ -103,10 +108,12 @@ RCT_EXPORT_METHOD(forceRefresh) {
     [self.networkStateManager forceRefresh];
 }
 
+#if RCT_NEW_ARCH_ENABLED
 - (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
     (const facebook::react::ObjCTurboModule::InitParams &)params
 {
     return std::make_shared<facebook::react::NativeNetworkStateSpecJSI>(params);
 }
+#endif
 
 @end

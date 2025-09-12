@@ -22,5 +22,20 @@ Pod::Spec.new do |s|
   # React Native dependency
   s.dependency "React-Core"
 
+  # New Architecture / Codegen dependencies
+  if ENV['RCT_NEW_ARCH_ENABLED'] == '1'
+    # Enable new-arch compile flag
+    s.compiler_flags = "$(inherited) -DRCT_NEW_ARCH_ENABLED=1"
+    # Pull in React-Codegen and the generated spec pod for this module
+    s.dependency "React-Codegen"
+    # Ensure headers for codegen are visible
+    s.pod_target_xcconfig = {
+      "HEADER_SEARCH_PATHS" => [
+        '"$(PODS_ROOT)/Headers/Public/React-Codegen"',
+        '"$(PODS_CONFIGURATION_BUILD_DIR)/React-Codegen/React_Codegen.framework/Headers"'
+      ].join(' ')
+    }
+  end
+
   install_modules_dependencies(s)
 end
