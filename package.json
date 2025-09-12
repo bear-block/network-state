@@ -87,7 +87,7 @@
     "react": "19.1.0",
     "react-native": "0.81.0",
     "react-native-builder-bob": "^0.40.13",
-    "release-it": "^17.10.0",
+    "release-it": "latest",
     "turbo": "^1.10.7",
     "typescript": "^5.8.3"
   },
@@ -147,12 +147,7 @@
           "esm": true
         }
       ],
-      [
-        "typescript",
-        {
-          "project": "tsconfig.build.json"
-        }
-      ]
+      "typescript"
     ]
   },
   "codegenConfig": {
@@ -167,5 +162,9 @@
     "languages": "kotlin-objc",
     "type": "turbo-module",
     "version": "0.53.0"
-  }
+  },
+  "eslintIgnore": [
+    "node_modules/",
+    "lib/"
+  ]
 }
