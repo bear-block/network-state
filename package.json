@@ -1,6 +1,6 @@
 {
   "name": "@bear-block/network-state",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "later",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
