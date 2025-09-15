@@ -11,6 +11,7 @@ class NetworkStateModule(reactContext: ReactApplicationContext) :
 
   private val networkStateManager = NetworkStateManager(reactContext)
   private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+  private var collectJob: Job? = null
   
   private val eventEmitter = reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
 
@@ -67,9 +68,10 @@ class NetworkStateModule(reactContext: ReactApplicationContext) :
 
   override fun startNetworkStateListener() {
     networkStateManager.startListening()
-    
+    if (collectJob != null) return
+
     // Start observing network state changes and emit events
-    scope.launch {
+    collectJob = scope.launch {
       networkStateManager.networkState.collect { networkState ->
         val eventData = Arguments.createMap().apply {
           putBoolean("isConnected", networkState.isConnected)
@@ -114,6 +116,8 @@ class NetworkStateModule(reactContext: ReactApplicationContext) :
 
   override fun stopNetworkStateListener() {
     networkStateManager.stopListening()
+    collectJob?.cancel()
+    collectJob = null
   }
 
   override fun isNetworkTypeAvailable(type: String, promise: Promise) {

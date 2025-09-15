@@ -1,3 +1,11 @@
+## 1.1.0
+
+- iOS: Switch to NWPathMonitor-only, drop SystemConfiguration. iOS min 12.0.
+- iOS: Proper NativeEventEmitter wiring with startObserving lifecycle.
+- Android: Prevent duplicate collectors; manage coroutine Job.
+- TS: Relax NetworkCapabilities fields to optional; `NetworkDetails.capabilities` optional.
+- Hook: Remove circular import; use NativeEventEmitter on iOS, DeviceEventEmitter on Android.
+- Docs: Update README to match new behavior and minimum OS versions.
 # Changelog
 
 All notable changes to this project will be documented in this file.

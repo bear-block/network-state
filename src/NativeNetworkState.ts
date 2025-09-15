@@ -15,30 +15,30 @@ export interface NetworkDetails {
   strength?: number;
   frequency?: number;
   linkSpeed?: number;
-  capabilities: NetworkCapabilities;
+  capabilities?: NetworkCapabilities;
 }
 
 export interface NetworkCapabilities {
-  hasTransportWifi: boolean;
-  hasTransportCellular: boolean;
-  hasTransportEthernet: boolean;
-  hasTransportBluetooth: boolean;
-  hasTransportVpn: boolean;
-  hasCapabilityInternet: boolean;
-  hasCapabilityValidated: boolean;
-  hasCapabilityCaptivePortal: boolean;
-  hasCapabilityNotRestricted: boolean;
-  hasCapabilityTrusted: boolean;
-  hasCapabilityNotMetered: boolean;
-  hasCapabilityNotRoaming: boolean;
-  hasCapabilityForLocal: boolean;
-  hasCapabilityManaged: boolean;
-  hasCapabilityNotSuspended: boolean;
-  hasCapabilityNotVpn: boolean;
-  hasCapabilityNotCellular: boolean;
-  hasCapabilityNotWifi: boolean;
-  hasCapabilityNotEthernet: boolean;
-  hasCapabilityNotBluetooth: boolean;
+  hasTransportWifi?: boolean;
+  hasTransportCellular?: boolean;
+  hasTransportEthernet?: boolean;
+  hasTransportBluetooth?: boolean;
+  hasTransportVpn?: boolean;
+  hasCapabilityInternet?: boolean;
+  hasCapabilityValidated?: boolean;
+  hasCapabilityCaptivePortal?: boolean;
+  hasCapabilityNotRestricted?: boolean;
+  hasCapabilityTrusted?: boolean;
+  hasCapabilityNotMetered?: boolean;
+  hasCapabilityNotRoaming?: boolean;
+  hasCapabilityForLocal?: boolean;
+  hasCapabilityManaged?: boolean;
+  hasCapabilityNotSuspended?: boolean;
+  hasCapabilityNotVpn?: boolean;
+  hasCapabilityNotCellular?: boolean;
+  hasCapabilityNotWifi?: boolean;
+  hasCapabilityNotEthernet?: boolean;
+  hasCapabilityNotBluetooth?: boolean;
 }
 
 export enum NetworkType {
@@ -54,6 +54,10 @@ export enum NetworkType {
 }
 
 export interface Spec extends TurboModule {
+  // Required for NativeEventEmitter on iOS
+  addListener(eventType: string): void;
+  removeListeners(count: number): void;
+
   // Get current network state
   getNetworkState(): Promise<NetworkState>;
 

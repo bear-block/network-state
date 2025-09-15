@@ -1,10 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
+  NativeEventEmitter,
   DeviceEventEmitter,
   AppState,
+  Platform,
+  NativeModules,
   type AppStateStatus,
 } from 'react-native';
-import { networkState, NetworkType } from './index';
+import NativeNetworkState, { NetworkType } from './NativeNetworkState';
 import type {
   NetworkState as NetworkStateType,
   NetworkDetails,
@@ -117,10 +120,13 @@ export function useNetworkState(
   const [networkStateData, setNetworkStateData] =
     useState<NetworkStateType | null>(null);
   const [isListening, setIsListening] = useState(false);
+  const subscriptionRef = useRef<{
+    remove: () => void;
+  } | null>(null);
 
   const refresh = useCallback(async () => {
     try {
-      const state = await networkState.getNetworkState();
+      const state = await NativeNetworkState.getNetworkState();
       setNetworkStateData(state);
     } catch (error) {
       console.error('Failed to refresh network state:', error);
@@ -129,32 +135,36 @@ export function useNetworkState(
 
   const startListening = useCallback(() => {
     if (!isListening) {
-      networkState.startListening();
+      NativeNetworkState.startNetworkStateListener();
       setIsListening(true);
 
       // Listen to network state changes
-      const subscription = DeviceEventEmitter.addListener(
+      const emitter =
+        Platform.OS === 'ios'
+          ? new NativeEventEmitter((NativeModules as any).NetworkState)
+          : DeviceEventEmitter;
+      const subscription = (emitter as any).addListener(
         'networkStateChanged',
-        (state: NetworkStateType) => {
-          setNetworkStateData(state);
+        (state: any) => {
+          setNetworkStateData(state as NetworkStateType);
         }
       );
 
-      // Store subscription for cleanup
-      (networkState as any)._subscription = subscription;
+      // Store subscription for cleanup in closure
+      subscriptionRef.current = subscription as unknown as {
+        remove: () => void;
+      };
     }
   }, [isListening]);
 
   const stopListening = useCallback(() => {
     if (isListening) {
-      networkState.stopListening();
+      NativeNetworkState.stopNetworkStateListener();
       setIsListening(false);
 
       // Remove subscription
-      if ((networkState as any)._subscription) {
-        (networkState as any)._subscription.remove();
-        (networkState as any)._subscription = null;
-      }
+      subscriptionRef.current?.remove?.();
+      subscriptionRef.current = null;
     }
   }, [isListening]);
 
@@ -163,7 +173,7 @@ export function useNetworkState(
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
       if (nextAppState === 'active' && isListening) {
         // App came to foreground, force refresh network state
-        networkState.forceRefresh();
+        NativeNetworkState.forceRefresh();
         // Also refresh local state
         refresh();
       }
@@ -200,18 +210,34 @@ export function useNetworkState(
     startListening,
     stopListening,
     refresh,
-    isNetworkTypeAvailable:
-      networkState.isNetworkTypeAvailable.bind(networkState),
-    getNetworkStrength: networkState.getNetworkStrength.bind(networkState),
-    isNetworkExpensive: networkState.isNetworkExpensive.bind(networkState),
-    isNetworkMetered: networkState.isNetworkMetered.bind(networkState),
-    isConnectedToWifi: networkState.isConnectedToWifi.bind(networkState),
-    isConnectedToCellular:
-      networkState.isConnectedToCellular.bind(networkState),
-    isInternetReachable: networkState.isInternetReachable.bind(networkState),
-    getWifiDetails: networkState.getWifiDetails.bind(networkState),
-    getNetworkCapabilities:
-      networkState.getNetworkCapabilities.bind(networkState),
+    isNetworkTypeAvailable: (type: NetworkType) =>
+      NativeNetworkState.isNetworkTypeAvailable(type),
+    getNetworkStrength: () => NativeNetworkState.getNetworkStrength(),
+    isNetworkExpensive: () => NativeNetworkState.isNetworkExpensive(),
+    isNetworkMetered: () => NativeNetworkState.isNetworkMetered(),
+    isConnectedToWifi: async () => {
+      const state = await NativeNetworkState.getNetworkState();
+      return state.type === NetworkType.WIFI && state.isConnected;
+    },
+    isConnectedToCellular: async () => {
+      const state = await NativeNetworkState.getNetworkState();
+      return state.type === NetworkType.CELLULAR && state.isConnected;
+    },
+    isInternetReachable: async () => {
+      const state = await NativeNetworkState.getNetworkState();
+      return state.isInternetReachable;
+    },
+    getWifiDetails: async () => {
+      const state = await NativeNetworkState.getNetworkState();
+      if (state.type === NetworkType.WIFI && state.details) {
+        return state.details;
+      }
+      return null;
+    },
+    getNetworkCapabilities: async () => {
+      const state = await NativeNetworkState.getNetworkState();
+      return state.details?.capabilities || null;
+    },
   };
 }
 

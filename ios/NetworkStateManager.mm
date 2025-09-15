@@ -1,6 +1,9 @@
 #import "NetworkStateManager.h"
-#import <SystemConfiguration/SystemConfiguration.h>
+#import <Network/Network.h>
 
+/**
+ * Lightweight capability model attached to NetworkStateModel
+ */
 @implementation NetworkCapabilities
 
 - (instancetype)init {
@@ -17,19 +20,8 @@
     return self;
 }
 
-- (void)updateFromReachability:(SCNetworkReachabilityFlags)flags {
-    // Transport capabilities based on reachability flags
-    _hasTransportWifi = (flags & kSCNetworkReachabilityFlagsIsWWAN) == 0 && (flags & kSCNetworkReachabilityFlagsReachable) != 0;
-    _hasTransportCellular = (flags & kSCNetworkReachabilityFlagsIsWWAN) != 0;
-    _hasTransportEthernet = NO; // SystemConfiguration doesn't distinguish ethernet
-    _hasTransportBluetooth = NO; // SystemConfiguration doesn't distinguish bluetooth
-    _hasTransportVpn = NO; // SystemConfiguration doesn't distinguish VPN
-    
-    // Network capabilities
-    _hasCapabilityInternet = (flags & kSCNetworkReachabilityFlagsReachable) != 0;
-    _hasCapabilityValidated = (flags & kSCNetworkReachabilityFlagsReachable) != 0;
-    _hasCapabilityCaptivePortal = NO; // SystemConfiguration doesn't detect captive portals
-}
+// No-op for NWPathMonitor-only implementation
+- (void)updateFromReachability:(int)unused {}
 
 - (NSDictionary *)toDictionary {
     NSMutableDictionary *result = [NSMutableDictionary dictionary];
@@ -46,6 +38,10 @@
 
 @end
 
+/**
+ * Network details (strength/frequency/linkSpeed).
+ * iOS does not expose these via public APIs; keep placeholders.
+ */
 @implementation NetworkDetails
 
 - (instancetype)init {
@@ -57,12 +53,8 @@
     return self;
 }
 
-- (void)updateFromReachability:(SCNetworkReachabilityFlags)flags {
-    // SystemConfiguration doesn't provide detailed network information
-    _strength = -1;
-    _frequency = -1;
-    _linkSpeed = -1;
-}
+// No-op for NWPathMonitor-only implementation
+- (void)updateFromReachability:(int)unused {}
 
 - (NSDictionary *)toDictionary {
     NSMutableDictionary *result = [NSMutableDictionary dictionary];
@@ -116,17 +108,20 @@
     result[@"isExpensive"] = @(_isExpensive);
     result[@"isMetered"] = @(_isMetered);
     result[@"type"] = _type;
-    result[@"capabilities"] = [_capabilities toDictionary];
-    result[@"details"] = [_details toDictionary];
+    // Compose details and nest capabilities under details to match JS types
+    NSMutableDictionary *detailsDict = [[_details toDictionary] mutableCopy];
+    if (!detailsDict) { detailsDict = [NSMutableDictionary dictionary]; }
+    detailsDict[@"capabilities"] = [_capabilities toDictionary];
+    result[@"details"] = detailsDict;
     return result;
 }
 
 @end
 
 @implementation NetworkStateManager {
-    SCNetworkReachabilityRef _reachability;
     NetworkStateModel *_currentNetworkState;
     NSMutableArray<id<NetworkStateListener>> *_listeners;
+    nw_path_monitor_t _pathMonitor;
 }
 
 - (instancetype)init {
@@ -140,58 +135,68 @@
 
 - (void)dealloc {
     @try {
-        if (_reachability) {
-            SCNetworkReachabilityUnscheduleFromRunLoop(_reachability, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
-            CFRelease(_reachability);
-            _reachability = NULL;
+        if (_pathMonitor) {
+            nw_path_monitor_cancel(_pathMonitor);
+            _pathMonitor = NULL;
         }
     } @catch (NSException *exception) {
         NSLog(@"NetworkStateManager dealloc error: %@", exception.reason);
     }
 }
 
+// Set up NWPathMonitor (iOS 12+)
 - (void)setupReachability {
     @try {
-        // Create reachability for general internet connectivity
-        _reachability = SCNetworkReachabilityCreateWithName(NULL, "www.apple.com");
-        
-        if (_reachability) {
-            SCNetworkReachabilityContext context = {0, (__bridge void *)self, NULL, NULL, NULL};
-            SCNetworkReachabilitySetCallback(_reachability, reachabilityCallback, &context);
-            SCNetworkReachabilityScheduleWithRunLoop(_reachability, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
-            
-            // Get initial state
-            SCNetworkReachabilityFlags flags;
-            if (SCNetworkReachabilityGetFlags(_reachability, &flags)) {
-                [self updateNetworkState:flags];
-            }
-        } else {
-            NSLog(@"NetworkStateManager: Failed to create reachability");
-        }
+        _pathMonitor = nw_path_monitor_create();
+        nw_path_monitor_set_queue(_pathMonitor, dispatch_get_main_queue());
+        __weak NetworkStateManager *weakSelf = self;
+        nw_path_monitor_set_update_handler(_pathMonitor, ^(nw_path_t  _Nonnull path) {
+            NetworkStateManager *strongSelf = weakSelf;
+            if (!strongSelf) return;
+            [strongSelf updateNetworkStateFromPath:path];
+        });
+        nw_path_monitor_start(_pathMonitor);
     } @catch (NSException *exception) {
         NSLog(@"NetworkStateManager setupReachability error: %@", exception.reason);
     }
 }
 
-static void reachabilityCallback(SCNetworkReachabilityRef target, SCNetworkReachabilityFlags flags, void *info) {
-    if (info == NULL) return;
-    
+// Update current state based on NWPath
+- (void)updateNetworkStateFromPath:(nw_path_t)path API_AVAILABLE(ios(12.0)) {
     @try {
-        NetworkStateManager *manager = (__bridge NetworkStateManager *)info;
-        if (manager) {
-            [manager updateNetworkState:flags];
-        }
-    } @catch (NSException *exception) {
-        NSLog(@"NetworkStateManager reachability callback error: %@", exception.reason);
-    }
-}
+        nw_path_status_t status = nw_path_get_status(path);
+        BOOL isSatisfied = (status == nw_path_status_satisfied);
+        BOOL usesWifi = nw_path_uses_interface_type(path, nw_interface_type_wifi);
+        BOOL usesCell = nw_path_uses_interface_type(path, nw_interface_type_cellular);
+        BOOL usesEthernet = nw_path_uses_interface_type(path, nw_interface_type_wired);
+        BOOL usesOther = nw_path_uses_interface_type(path, nw_interface_type_other);
 
-- (void)updateNetworkState:(SCNetworkReachabilityFlags)flags {
-    @try {
-        if (_currentNetworkState) {
-            [_currentNetworkState updateFromReachability:flags];
+        _currentNetworkState.isConnected = isSatisfied;
+        _currentNetworkState.isInternetReachable = isSatisfied;
+        _currentNetworkState.isExpensive = usesCell;
+        _currentNetworkState.isMetered = usesCell;
+        if (usesWifi) {
+            _currentNetworkState.type = @"wifi";
+        } else if (usesCell) {
+            _currentNetworkState.type = @"cellular";
+        } else if (usesEthernet) {
+            _currentNetworkState.type = @"ethernet";
+        } else if (usesOther) {
+            _currentNetworkState.type = @"unknown";
+        } else {
+            _currentNetworkState.type = isSatisfied ? @"unknown" : @"none";
         }
-        
+
+        // Capabilities
+        [_currentNetworkState.capabilities setHasTransportWifi:usesWifi];
+        [_currentNetworkState.capabilities setHasTransportCellular:usesCell];
+        [_currentNetworkState.capabilities setHasTransportEthernet:usesEthernet];
+        [_currentNetworkState.capabilities setHasTransportBluetooth:NO];
+        [_currentNetworkState.capabilities setHasTransportVpn:NO];
+        [_currentNetworkState.capabilities setHasCapabilityInternet:isSatisfied];
+        [_currentNetworkState.capabilities setHasCapabilityValidated:isSatisfied];
+        [_currentNetworkState.capabilities setHasCapabilityCaptivePortal:NO];
+
         // Notify listeners
         if (_listeners) {
             for (id<NetworkStateListener> listener in _listeners) {
@@ -201,7 +206,7 @@ static void reachabilityCallback(SCNetworkReachabilityRef target, SCNetworkReach
             }
         }
     } @catch (NSException *exception) {
-        NSLog(@"NetworkStateManager updateNetworkState error: %@", exception.reason);
+        NSLog(@"NetworkStateManager updateNetworkStateFromPath error: %@", exception.reason);
     }
 }
 
@@ -220,23 +225,17 @@ static void reachabilityCallback(SCNetworkReachabilityRef target, SCNetworkReach
 }
 
 - (BOOL)isNetworkTypeAvailable:(NSString *)typeString {
-    SCNetworkReachabilityFlags flags;
-    if (!SCNetworkReachabilityGetFlags(_reachability, &flags)) {
-        return NO;
-    }
-    
     if ([typeString isEqualToString:@"wifi"]) {
-        return (flags & kSCNetworkReachabilityFlagsReachable) != 0 && (flags & kSCNetworkReachabilityFlagsIsWWAN) == 0;
+        return _currentNetworkState.capabilities.hasTransportWifi;
     } else if ([typeString isEqualToString:@"cellular"]) {
-        return (flags & kSCNetworkReachabilityFlagsIsWWAN) != 0;
+        return _currentNetworkState.capabilities.hasTransportCellular;
     } else if ([typeString isEqualToString:@"ethernet"]) {
-        return NO; // SystemConfiguration doesn't distinguish ethernet
+        return _currentNetworkState.capabilities.hasTransportEthernet;
     } else if ([typeString isEqualToString:@"bluetooth"]) {
-        return NO; // SystemConfiguration doesn't distinguish bluetooth
+        return _currentNetworkState.capabilities.hasTransportBluetooth;
     } else if ([typeString isEqualToString:@"vpn"]) {
-        return NO; // SystemConfiguration doesn't distinguish VPN
+        return _currentNetworkState.capabilities.hasTransportVpn;
     }
-    
     return NO;
 }
 
@@ -254,10 +253,12 @@ static void reachabilityCallback(SCNetworkReachabilityRef target, SCNetworkReach
 }
 
 - (void)forceRefresh {
-    SCNetworkReachabilityFlags flags;
-    if (SCNetworkReachabilityGetFlags(_reachability, &flags)) {
-        [self updateNetworkState:flags];
+    // Restart monitor to force an immediate update callback
+    if (_pathMonitor) {
+        nw_path_monitor_cancel(_pathMonitor);
+        _pathMonitor = NULL;
     }
+    [self setupReachability];
 }
 
 @end

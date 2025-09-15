@@ -10,13 +10,13 @@ Pod::Spec.new do |s|
   s.license      = package["license"]
   s.authors      = package["author"]
 
-  s.platforms    = { :ios => "9.0" }
+  s.platforms    = { :ios => "12.0" }
   s.source       = { :git => "https://github.com/bear-block/bear-block-network-state.git", :tag => "#{s.version}" }
 
   s.source_files = "ios/**/*.{h,m,mm,cpp}"
   s.private_header_files = "ios/**/*.h"
   
-  s.frameworks = "SystemConfiguration"
+  s.frameworks = "Network"
 
 
   install_modules_dependencies(s)

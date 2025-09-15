@@ -3,6 +3,7 @@
 
 @interface NetworkState () <NetworkStateListener>
 @property (nonatomic, strong) NetworkStateManager *networkStateManager;
+@property (nonatomic, assign) BOOL hasListeners;
 @end
 
 @implementation NetworkState
@@ -15,7 +16,7 @@ RCT_EXPORT_MODULE()
 - (instancetype)init {
     if (self = [super init]) {
         _networkStateManager = [[NetworkStateManager alloc] init];
-        [_networkStateManager addListener:self];
+        _isListening = NO;
     }
     return self;
 }
@@ -27,12 +28,28 @@ RCT_EXPORT_MODULE()
 }
 
 - (void)sendNetworkStateEvent:(NetworkStateModel *)networkState {
+    if (!self.hasListeners) { return; }
     NSDictionary *eventData = [networkState toDictionary];
-    [self sendEventWithName:@"networkStateChanged" body:eventData];
+    if ([NSThread isMainThread]) {
+        [self sendEventWithName:@"networkStateChanged" body:eventData];
+    } else {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self sendEventWithName:@"networkStateChanged" body:eventData];
+        });
+    }
 }
 
 - (NSArray<NSString *> *)supportedEvents {
     return @[@"networkStateChanged"];
+}
+
+// MARK: - RCTEventEmitter lifecycle
+- (void)startObserving {
+    self.hasListeners = YES;
+}
+
+- (void)stopObserving {
+    self.hasListeners = NO;
 }
 
 // MARK: - NativeNetworkStateSpec Implementation
@@ -49,11 +66,20 @@ RCT_EXPORT_METHOD(getNetworkState:(RCTPromiseResolveBlock)resolve
 }
 
 RCT_EXPORT_METHOD(startNetworkStateListener) {
-    // NetworkStateManager automatically starts listening in init
+    if (!_isListening) {
+        [_networkStateManager addListener:self];
+        _isListening = YES;
+        // Emit current snapshot immediately upon starting
+        NetworkStateModel *snapshot = [self.networkStateManager getCurrentNetworkState];
+        [self sendNetworkStateEvent:snapshot];
+    }
 }
 
 RCT_EXPORT_METHOD(stopNetworkStateListener) {
-    [self.networkStateManager removeListener:self];
+    if (_isListening) {
+        [self.networkStateManager removeListener:self];
+        _isListening = NO;
+    }
 }
 
 RCT_EXPORT_METHOD(isNetworkTypeAvailable:(NSString *)type

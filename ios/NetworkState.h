@@ -4,4 +4,6 @@
 
 @interface NetworkState : RCTEventEmitter <RCTBridgeModule, NativeNetworkStateSpec>
 
+@property (nonatomic, assign) BOOL isListening;
+
 @end

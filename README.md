@@ -68,8 +68,6 @@ The library automatically adds the necessary permissions and frameworks:
 
 #### iOS (Auto-linked)
 - `Network.framework` - For NWPathMonitor and network state detection
-- `SystemConfiguration.framework` - For WiFi SSID detection  
-- `CoreTelephony.framework` - For cellular network information
 
 ## 📖 Usage
 
@@ -208,7 +206,7 @@ interface NetworkDetails {
   strength?: number;        // Signal strength
   frequency?: number;       // WiFi frequency (MHz, Android only)
   linkSpeed?: number;       // WiFi link speed (Android only)
-  capabilities: NetworkCapabilities;
+  capabilities?: NetworkCapabilities; // iOS provides transports via capabilities; optional for parity
 }
 ```
 
