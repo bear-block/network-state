@@ -8,6 +8,7 @@ import com.facebook.react.module.model.ReactModuleInfoProvider
 import java.util.HashMap
 
 class NetworkStatePackage : BaseReactPackage() {
+  private fun isNewArchitectureEnabled(): Boolean = true
   override fun getModule(name: String, reactContext: ReactApplicationContext): NativeModule? {
     return if (name == NetworkStateModule.NAME) {
       NetworkStateModule(reactContext)
@@ -25,7 +26,7 @@ class NetworkStatePackage : BaseReactPackage() {
         false,  // canOverrideExistingModule
         false,  // needsEagerInit
         false,  // isCxxModule
-        true // isTurboModule
+        isNewArchitectureEnabled() // mark as TurboModule (New Architecture)
       )
       moduleInfos
     }

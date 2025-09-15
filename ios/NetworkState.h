@@ -1,7 +1,7 @@
 #import <NetworkStateSpec/NetworkStateSpec.h>
-#import <Foundation/Foundation.h>
+#import <React/RCTBridgeModule.h>
 #import <React/RCTEventEmitter.h>
 
-@interface NetworkState : RCTEventEmitter <NativeNetworkStateSpec>
+@interface NetworkState : RCTEventEmitter <RCTBridgeModule, NativeNetworkStateSpec>
 
 @end

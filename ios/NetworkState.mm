@@ -1,66 +1,64 @@
 #import "NetworkState.h"
 #import "NetworkStateManager.h"
-#import <Network/Network.h>
 
-@interface NetworkState ()
+@interface NetworkState () <NetworkStateListener>
 @property (nonatomic, strong) NetworkStateManager *networkStateManager;
-@property (nonatomic, assign) BOOL hasListeners;
 @end
 
 @implementation NetworkState
-
 RCT_EXPORT_MODULE()
 
++ (BOOL)requiresMainQueueSetup {
+    return NO;
+}
+
 - (instancetype)init {
-    self = [super init];
-    if (self) {
+    if (self = [super init]) {
         _networkStateManager = [[NetworkStateManager alloc] init];
-        _hasListeners = NO;
+        [_networkStateManager addListener:self];
     }
     return self;
+}
+
+- (void)onNetworkStateChanged:(id)networkState {
+    if ([networkState isKindOfClass:[NetworkStateModel class]]) {
+        [self sendNetworkStateEvent:(NetworkStateModel *)networkState];
+    }
+}
+
+- (void)sendNetworkStateEvent:(NetworkStateModel *)networkState {
+    NSDictionary *eventData = [networkState toDictionary];
+    [self sendEventWithName:@"networkStateChanged" body:eventData];
 }
 
 - (NSArray<NSString *> *)supportedEvents {
     return @[@"networkStateChanged"];
 }
 
-- (void)startObserving {
-    self.hasListeners = YES;
-}
-
-- (void)stopObserving {
-    self.hasListeners = NO;
-}
+// MARK: - NativeNetworkStateSpec Implementation
 
 RCT_EXPORT_METHOD(getNetworkState:(RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject) {
+                  reject:(RCTPromiseRejectBlock)reject) {
     @try {
-        NSDictionary *networkState = [self.networkStateManager getCurrentNetworkState];
-        resolve(networkState);
+        NetworkStateModel *networkState = [self.networkStateManager getCurrentNetworkState];
+        NSDictionary *result = [networkState toDictionary];
+        resolve(result);
     } @catch (NSException *exception) {
         reject(@"NETWORK_STATE_ERROR", exception.reason, nil);
     }
 }
 
 RCT_EXPORT_METHOD(startNetworkStateListener) {
-    __weak NetworkState *weakSelf = self;
-    weakSelf.networkStateManager.monitor.pathUpdateHandler = ^(NWPath *path) {
-        if (weakSelf.hasListeners) {
-            NSDictionary *state = [weakSelf.networkStateManager getCurrentNetworkState];
-            [weakSelf sendEventWithName:@"networkStateChanged" body:state];
-        }
-    };
-    // Use startWithQueue: in Obj-C
-    [weakSelf.networkStateManager.monitor startWithQueue:weakSelf.networkStateManager.monitorQueue];
+    // NetworkStateManager automatically starts listening in init
 }
 
 RCT_EXPORT_METHOD(stopNetworkStateListener) {
-    [self.networkStateManager stopMonitoring];
+    [self.networkStateManager removeListener:self];
 }
 
 RCT_EXPORT_METHOD(isNetworkTypeAvailable:(NSString *)type
-                  resolver:(RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject) {
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject) {
     @try {
         BOOL isAvailable = [self.networkStateManager isNetworkTypeAvailable:type];
         resolve(@(isAvailable));
@@ -70,7 +68,7 @@ RCT_EXPORT_METHOD(isNetworkTypeAvailable:(NSString *)type
 }
 
 RCT_EXPORT_METHOD(getNetworkStrength:(RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject) {
+                  reject:(RCTPromiseRejectBlock)reject) {
     @try {
         NSInteger strength = [self.networkStateManager getNetworkStrength];
         resolve(@(strength));
@@ -80,7 +78,7 @@ RCT_EXPORT_METHOD(getNetworkStrength:(RCTPromiseResolveBlock)resolve
 }
 
 RCT_EXPORT_METHOD(isNetworkExpensive:(RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject) {
+                  reject:(RCTPromiseRejectBlock)reject) {
     @try {
         BOOL isExpensive = [self.networkStateManager isNetworkExpensive];
         resolve(@(isExpensive));
@@ -90,7 +88,7 @@ RCT_EXPORT_METHOD(isNetworkExpensive:(RCTPromiseResolveBlock)resolve
 }
 
 RCT_EXPORT_METHOD(isNetworkMetered:(RCTPromiseResolveBlock)resolve
-                  rejecter:(RCTPromiseRejectBlock)reject) {
+                  reject:(RCTPromiseRejectBlock)reject) {
     @try {
         BOOL isMetered = [self.networkStateManager isNetworkMetered];
         resolve(@(isMetered));
@@ -102,6 +100,8 @@ RCT_EXPORT_METHOD(isNetworkMetered:(RCTPromiseResolveBlock)resolve
 RCT_EXPORT_METHOD(forceRefresh) {
     [self.networkStateManager forceRefresh];
 }
+
+// MARK: - TurboModule Support
 
 - (std::shared_ptr<facebook::react::TurboModule>)getTurboModule:
     (const facebook::react::ObjCTurboModule::InitParams &)params
