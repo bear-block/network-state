@@ -1,30 +1,18 @@
-# Modern Network State Library
+# React Native Network State (Android 10+ / iOS 12+)
 
 A high-performance React Native library for tracking network state using modern Android APIs (API 29+) and iOS NWPathMonitor (iOS 12+). This library provides accurate network state information by leveraging the latest platform APIs instead of deprecated methods used by older libraries.
 
 ## 🚀 Features
 
-- **Modern Android APIs**: Uses Android 10+ (API 29+) Network Capabilities API for accurate network detection
-- **Modern iOS APIs**: Uses iOS 12+ NWPathMonitor and Network framework for reliable network tracking
-- **Real-time monitoring**: Listen to network state changes in real-time on both platforms
-- **Comprehensive network info**: Get detailed information about WiFi, cellular, Ethernet, Bluetooth, and VPN connections (Android: WIFI_AWARE, LOWPAN support)
-- **Network capabilities**: Access detailed network capabilities and transport information
-- **React Hook**: Easy-to-use React Hook for React Native apps
-- **TypeScript support**: Full TypeScript support with comprehensive type definitions
-- **Performance optimized**: Efficient network state tracking with minimal battery impact
-- **Cross-platform**: Consistent API across Android and iOS
-- **Background/Foreground handling**: Automatic network state refresh when app returns to foreground
+- Modern APIs: Android 10+ `NetworkCapabilities`, iOS 12+ `NWPathMonitor`
+- Real-time monitoring with automatic foreground refresh
+- Works with Old & New Architecture (TurboModules/Fabric)
+- Detailed info and capabilities (coverage varies by platform)
+- Simple React Hook + TypeScript types
 
-## 📱 Why This Library?
+## 📱 Why
 
-Traditional network state libraries like `@react-native-community/netinfo` or `expo-network` often use deprecated Android APIs that can provide inaccurate information, especially on newer Android versions. This library:
-
-- **Android**: Uses `NetworkCapabilities` API (Android 10+) for accurate network type detection
-- **iOS**: Uses `NWPathMonitor` (iOS 12+) for reliable network state monitoring
-- **Real-time updates**: Implements comprehensive network callbacks for both platforms
-- **Modern permissions**: Handles platform-specific permission requirements properly
-- **Background/Foreground lifecycle**: Automatically refreshes network state when app returns to foreground
-- **Provides detailed network information** that older APIs cannot access
+Use modern platform APIs for accurate, real-time network state on Android 10+ and iOS 12+.
 
 ## 📋 Requirements
 
@@ -42,21 +30,19 @@ yarn add @bear-block/network-state
 
 ### Setup
 
-**No manual setup required!** The library automatically handles all configuration through React Native autolinking.
+Autolinking handles configuration.
 
 #### Android
 - ✅ Permissions are automatically added to your app
 - ✅ Requires Android 10+ (API 29+)
-- ✅ Works with both Old and New Architecture
+- ✅ Supports both Old Architecture and New Architecture (TurboModules)
 
 #### iOS  
 - ✅ Frameworks are automatically linked
 - ✅ Requires iOS 12.0+
-- ✅ Works with both Old and New Architecture
+- ✅ Supports both Old Architecture and New Architecture (TurboModules/Fabric)
 
 ### Permissions
-
-The library automatically adds the necessary permissions and frameworks:
 
 #### Android (Auto-added)
 ```xml
@@ -201,12 +187,12 @@ interface NetworkState {
 }
 
 interface NetworkDetails {
-  ssid?: string;           // WiFi network name
-  bssid?: string;          // WiFi BSSID (Android only)
-  strength?: number;        // Signal strength
-  frequency?: number;       // WiFi frequency (MHz, Android only)
-  linkSpeed?: number;       // WiFi link speed (Android only)
-  capabilities?: NetworkCapabilities; // iOS provides transports via capabilities; optional for parity
+  ssid?: string;            // WiFi network name (Android)
+  bssid?: string;           // WiFi BSSID (Android)
+  strength?: number;        // Signal strength (Android; iOS may be unavailable and return -1)
+  frequency?: number;       // WiFi frequency in MHz (Android)
+  linkSpeed?: number;       // WiFi link speed (Android)
+  capabilities?: NetworkCapabilities; // Both; field coverage varies by platform
 }
 ```
 
@@ -216,34 +202,36 @@ interface NetworkDetails {
 enum NetworkType {
   NONE = 'none',
   UNKNOWN = 'unknown',
-  WIFI = 'wifi',                    // Both platforms
-  CELLULAR = 'cellular',            // Both platforms
-  ETHERNET = 'ethernet',            // Both platforms
-  BLUETOOTH = 'bluetooth',          // Both platforms
-  VPN = 'vpn',                      // Both platforms
-  WIFI_AWARE = 'wifi_aware',        // Android only (API 26+)
-  LOWPAN = 'lowpan'                 // Android only (API 27+)
+  WIFI = 'wifi',                    // Android & iOS
+  CELLULAR = 'cellular',            // Android & iOS
+  ETHERNET = 'ethernet',            // Android & iOS (iOS via NWPath)
+  BLUETOOTH = 'bluetooth',          // Android (iOS transport not exposed via public APIs)
+  VPN = 'vpn',                      // Android (iOS transport not exposed via public APIs)
+  WIFI_AWARE = 'wifi_aware',        // Android (API 26+)
+  LOWPAN = 'lowpan'                 // Android (API 27+)
 }
 ```
 
-## 🧪 Testing
+### Platform Support by API
 
-Run the example app to test all features:
+- useNetworkState hook: Android & iOS
+- getNetworkState(): Android & iOS
+- start/stop listening: Android & iOS
+- isNetworkTypeAvailable(): Android & iOS (types available differ per platform)
+- getNetworkStrength(): Android (iOS returns -1)
+- isNetworkExpensive(): Android & iOS (treated as true on cellular)
+- isNetworkMetered(): Android & iOS (treated as true on cellular)
+- isConnectedToWifi()/isConnectedToCellular(): Android & iOS
+- isInternetReachable(): Android & iOS
+- getWifiDetails(): Android (may be null on iOS)
+- getNetworkCapabilities(): Android & iOS (fields coverage varies)
+
+## 🧪 Example
 
 ```bash
-cd example
-yarn install
-yarn android  # or yarn ios
+cd example && yarn install
+yarn android # or yarn ios
 ```
-
-### **Background/Foreground Testing**
-1. **Start the app** and observe current network state
-2. **Put app in background** (home button)
-3. **Change network** (WiFi ↔ Cellular)
-4. **Return to app** - network state should automatically refresh
-5. **Check logs** for automatic refresh events
-
-The example app includes AppState monitoring to demonstrate background/foreground handling.
 
 ## 🔄 Background/Foreground Handling
 
@@ -271,7 +259,7 @@ const { networkState, isListening } = useNetworkState({ autoStart: true });
 
 ## 🔍 How It Works
 
-### Android Implementation
+### Android Implementation (Summary)
 
 1. **Network Capabilities API**: Uses `NetworkCapabilities` to detect network type and capabilities
 2. **Network Callbacks**: Implements `ConnectivityManager.NetworkCallback` for real-time updates
@@ -279,7 +267,7 @@ const { networkState, isListening } = useNetworkState({ autoStart: true });
 4. **Efficient Monitoring**: Only listens when needed and provides accurate state information
 5. **App Lifecycle**: Handles background/foreground transitions with automatic state refresh
 
-### iOS Implementation
+### iOS Implementation (Summary)
 
 1. **NWPathMonitor**: Uses `NWPathMonitor` for real-time network state monitoring
 2. **Network Framework**: Leverages iOS 12+ Network framework for reliable detection
@@ -287,37 +275,15 @@ const { networkState, isListening } = useNetworkState({ autoStart: true });
 4. **Event Emission**: Emits network state changes to React Native via events
 5. **App Lifecycle**: Handles background/foreground transitions with automatic state refresh
 
-### Key Differences from Other Libraries
-
-| Feature | This Library | @react-native-community/netinfo | expo-network |
-|---------|--------------|--------------------------------|--------------|
-| **Android API** | Network Capabilities (API 29+) | Mixed old/new APIs | Mixed old/new APIs |
-| **iOS API** | NWPathMonitor (iOS 12+) | NWPathMonitor | NWPathMonitor |
-| **Accuracy** | High (modern APIs) | Medium (deprecated APIs) | Medium (deprecated APIs) |
-| **Real-time updates** | Yes | Yes | Yes |
-| **Background/Foreground** | ✅ Automatic refresh | ❌ Manual handling | ❌ Manual handling |
-| **Network capabilities** | Full | Limited | Limited |
-| **WiFi details** | Complete | Basic | Basic |
-| **Android 10+ support** | Native | Partial | Partial |
-| **iOS 12+ support** | Native | Yes | Yes |
-
 ## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+PRs welcome.
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
-
-- Inspired by the limitations of existing network state libraries
-- Built with modern Android and iOS development best practices
-- Designed for React Native developers who need accurate network information
+Built with modern Android/iOS APIs.
 
 ## 📞 Support
 
@@ -329,4 +295,4 @@ If you encounter any issues or have questions:
 
 ---
 
-**Note**: This library is specifically designed for Android 10+ and iOS 12+ to provide the most accurate network state information. For older versions, consider using `@react-native-community/netinfo` as a fallback.
+**Note**: Designed for Android 10+ and iOS 12+. For older OS versions, consider other libraries.

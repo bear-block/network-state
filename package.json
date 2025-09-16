@@ -42,8 +42,17 @@
   },
   "keywords": [
     "react-native",
-    "ios",
-    "android"
+    "network",
+    "netinfo",
+    "connectivity",
+    "nwpathmonitor",
+    "android 10",
+    "ios 12",
+    "turbo module",
+    "new architecture",
+    "wifi",
+    "cellular",
+    "network capabilities"
   ],
   "repository": {
     "type": "git",

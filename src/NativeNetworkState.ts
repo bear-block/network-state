@@ -1,5 +1,8 @@
 import { TurboModuleRegistry, type TurboModule } from 'react-native';
 
+/**
+ * Platform: Android & iOS
+ */
 export interface NetworkState {
   isConnected: boolean;
   isInternetReachable: boolean;
@@ -9,6 +12,9 @@ export interface NetworkState {
   details?: NetworkDetails;
 }
 
+/**
+ * Platform: Mostly Android. iOS may not provide SSID/BSSID/strength/frequency.
+ */
 export interface NetworkDetails {
   ssid?: string;
   bssid?: string;
@@ -18,6 +24,9 @@ export interface NetworkDetails {
   capabilities?: NetworkCapabilities;
 }
 
+/**
+ * Platform: Android & iOS. Field coverage varies per platform.
+ */
 export interface NetworkCapabilities {
   hasTransportWifi?: boolean;
   hasTransportCellular?: boolean;
@@ -41,16 +50,19 @@ export interface NetworkCapabilities {
   hasCapabilityNotBluetooth?: boolean;
 }
 
+/**
+ * Platform availability per member noted in comments.
+ */
 export enum NetworkType {
   NONE = 'none',
   UNKNOWN = 'unknown',
-  WIFI = 'wifi',
-  CELLULAR = 'cellular',
-  ETHERNET = 'ethernet',
-  BLUETOOTH = 'bluetooth',
-  VPN = 'vpn',
-  WIFI_AWARE = 'wifi_aware',
-  LOWPAN = 'lowpan',
+  WIFI = 'wifi', // Android & iOS
+  CELLULAR = 'cellular', // Android & iOS
+  ETHERNET = 'ethernet', // Android & iOS
+  BLUETOOTH = 'bluetooth', // Android
+  VPN = 'vpn', // Android
+  WIFI_AWARE = 'wifi_aware', // Android (API 26+)
+  LOWPAN = 'lowpan', // Android (API 27+)
 }
 
 export interface Spec extends TurboModule {
@@ -58,28 +70,28 @@ export interface Spec extends TurboModule {
   addListener(eventType: string): void;
   removeListeners(count: number): void;
 
-  // Get current network state
+  /** Get current network state (Android & iOS) */
   getNetworkState(): Promise<NetworkState>;
 
-  // Start listening to network changes
+  /** Start listening to network changes (Android & iOS) */
   startNetworkStateListener(): void;
 
-  // Stop listening to network changes
+  /** Stop listening to network changes (Android & iOS) */
   stopNetworkStateListener(): void;
 
-  // Check if specific network type is available
+  /** Check if specific network type is available. Types vary by platform. (Android & iOS) */
   isNetworkTypeAvailable(type: NetworkType): Promise<boolean>;
 
-  // Get network strength (for WiFi/Cellular)
+  /** Get network strength. Android returns RSSI; iOS may return -1. (Android & iOS) */
   getNetworkStrength(): Promise<number>;
 
-  // Check if network is expensive (mobile data)
+  /** Check if network is expensive (typically true on cellular). (Android & iOS) */
   isNetworkExpensive(): Promise<boolean>;
 
-  // Check if network is metered
+  /** Check if network is metered (typically true on cellular). (Android & iOS) */
   isNetworkMetered(): Promise<boolean>;
 
-  // Force refresh network state
+  /** Force refresh current network state (Android & iOS) */
   forceRefresh(): void;
 }
 

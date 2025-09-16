@@ -17,7 +17,10 @@ export type {
 // Export enum values and hook
 export { NetworkType, useNetworkState };
 
-// Main NetworkState class
+/**
+ * High-level API wrapping native module with convenient helpers.
+ * Platform: Android & iOS (unless otherwise noted in method JSDoc).
+ */
 export class ModernNetworkState {
   private static instance: ModernNetworkState;
   private isListening = false;
@@ -31,16 +34,12 @@ export class ModernNetworkState {
     return ModernNetworkState.instance;
   }
 
-  /**
-   * Get current network state
-   */
+  /** Get current network state (Android & iOS) */
   async getNetworkState(): Promise<NetworkStateType> {
     return await NetworkState.getNetworkState();
   }
 
-  /**
-   * Start listening to network state changes
-   */
+  /** Start listening to network state changes (Android & iOS) */
   startListening(): void {
     if (!this.isListening) {
       NetworkState.startNetworkStateListener();
@@ -48,9 +47,7 @@ export class ModernNetworkState {
     }
   }
 
-  /**
-   * Stop listening to network state changes
-   */
+  /** Stop listening to network state changes (Android & iOS) */
   stopListening(): void {
     if (this.isListening) {
       NetworkState.stopNetworkStateListener();
@@ -58,61 +55,45 @@ export class ModernNetworkState {
     }
   }
 
-  /**
-   * Check if specific network type is available
-   */
+  /** Check if specific network type is available (Android & iOS; type coverage varies) */
   async isNetworkTypeAvailable(type: NetworkType): Promise<boolean> {
     return await NetworkState.isNetworkTypeAvailable(type);
   }
 
-  /**
-   * Get network strength (for WiFi/Cellular)
-   */
+  /** Get network strength (Android returns RSSI; iOS may return -1) */
   async getNetworkStrength(): Promise<number> {
     return await NetworkState.getNetworkStrength();
   }
 
-  /**
-   * Check if network is expensive (mobile data)
-   */
+  /** Check if network is expensive (typically true on cellular) */
   async isNetworkExpensive(): Promise<boolean> {
     return await NetworkState.isNetworkExpensive();
   }
 
-  /**
-   * Check if network is metered
-   */
+  /** Check if network is metered (typically true on cellular) */
   async isNetworkMetered(): Promise<boolean> {
     return await NetworkState.isNetworkMetered();
   }
 
-  /**
-   * Check if currently connected to WiFi
-   */
+  /** Check if currently connected to WiFi (Android & iOS) */
   async isConnectedToWifi(): Promise<boolean> {
     const state = await this.getNetworkState();
     return state.type === NetworkType.WIFI && state.isConnected;
   }
 
-  /**
-   * Check if currently connected to cellular
-   */
+  /** Check if currently connected to cellular (Android & iOS) */
   async isConnectedToCellular(): Promise<boolean> {
     const state = await this.getNetworkState();
     return state.type === NetworkType.CELLULAR && state.isConnected;
   }
 
-  /**
-   * Check if internet is reachable
-   */
+  /** Check if internet is reachable (Android & iOS) */
   async isInternetReachable(): Promise<boolean> {
     const state = await this.getNetworkState();
     return state.isInternetReachable;
   }
 
-  /**
-   * Get WiFi details if connected
-   */
+  /** Get WiFi details if connected (Android; iOS may return null) */
   async getWifiDetails(): Promise<NetworkDetails | null> {
     const state = await this.getNetworkState();
     if (state.type === NetworkType.WIFI && state.details) {
@@ -121,17 +102,13 @@ export class ModernNetworkState {
     return null;
   }
 
-  /**
-   * Get network capabilities
-   */
+  /** Get network capabilities (Android & iOS; fields coverage varies) */
   async getNetworkCapabilities(): Promise<NetworkCapabilities | null> {
     const state = await this.getNetworkState();
     return state.details?.capabilities || null;
   }
 
-  /**
-   * Force refresh network state - useful when app comes to foreground
-   */
+  /** Force refresh network state - useful when app comes to foreground (Android & iOS) */
   forceRefresh(): void {
     NetworkState.forceRefresh();
   }
