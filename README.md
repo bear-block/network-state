@@ -38,22 +38,11 @@ Autolinking handles configuration.
 - ✅ Supports both Old Architecture and New Architecture (TurboModules)
 
 #### iOS  
-- ✅ Frameworks are automatically linked
+- ✅ Frameworks are automatically linked (`Network.framework`)
 - ✅ Requires iOS 12.0+
 - ✅ Supports both Old Architecture and New Architecture (TurboModules/Fabric)
 
-### Permissions
-
-#### Android (Auto-added)
-```xml
-<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-<uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
-<uses-permission android:name="android.permission.INTERNET" />
-```
-
-#### iOS (Auto-linked)
-- `Network.framework` - For NWPathMonitor and network state detection
+**Note**: All permissions and frameworks are automatically configured via autolinking. No manual setup required.
 
 ## 📖 Usage
 
@@ -146,9 +135,23 @@ const state = await networkState.getNetworkState();
 const wifiConnected = await networkState.isConnectedToWifi();
 const cellularConnected = await networkState.isConnectedToCellular();
 
+// Check network availability and properties
+const wifiAvailable = await networkState.isNetworkTypeAvailable(NetworkType.WIFI);
+const strength = await networkState.getNetworkStrength();
+const isExpensive = await networkState.isNetworkExpensive();
+const isMetered = await networkState.isNetworkMetered();
+const isReachable = await networkState.isInternetReachable();
+
+// Get detailed information
+const wifiDetails = await networkState.getWifiDetails();
+const capabilities = await networkState.getNetworkCapabilities();
+
 // Start/stop listening
 networkState.startListening();
 networkState.stopListening();
+
+// Force refresh (useful when app comes to foreground)
+networkState.forceRefresh();
 ```
 
 ## 🔧 API Reference
@@ -172,6 +175,9 @@ const {
   getWifiDetails,        // Get WiFi details
   getNetworkCapabilities // Get network capabilities
 } = useNetworkState(options);
+
+// Note: forceRefresh() is automatically called when app returns to foreground
+// No need to call it manually in most cases
 ```
 
 ### NetworkState Interface
@@ -217,6 +223,7 @@ enum NetworkType {
 - useNetworkState hook: Android & iOS
 - getNetworkState(): Android & iOS
 - start/stop listening: Android & iOS
+- refresh(): Android & iOS (manually refresh network state)
 - isNetworkTypeAvailable(): Android & iOS (types available differ per platform)
 - getNetworkStrength(): Android (iOS returns -1)
 - isNetworkExpensive(): Android & iOS (treated as true on cellular)
@@ -225,6 +232,7 @@ enum NetworkType {
 - isInternetReachable(): Android & iOS
 - getWifiDetails(): Android (may be null on iOS)
 - getNetworkCapabilities(): Android & iOS (fields coverage varies)
+- forceRefresh(): Android & iOS (automatically called on foreground, can be called manually)
 
 ## 🧪 Example
 

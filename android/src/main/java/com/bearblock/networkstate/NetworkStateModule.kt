@@ -139,7 +139,7 @@ class NetworkStateModule(reactContext: ReactApplicationContext) :
       } catch (e: Exception) {
         promise.reject("NETWORK_STRENGTH_ERROR", e.message, e)
       }
-      }
+    }
   }
 
   override fun isNetworkExpensive(promise: Promise) {
